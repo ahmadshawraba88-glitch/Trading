@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#0a0e1a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="محلل التداول">
+<title>محلل Pocket Option</title>
+<link rel="manifest" href="manifest.json">
+
+<!-- أيقونة للـ iOS -->
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230a0e1a'/><text y='68' x='50' text-anchor='middle' font-size='60'>📊</text></svg>">
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Tajawal','Arial',sans-serif;background:#0a0e1a;color:#e8eaf6;min-height:100vh;padding:16px;direction:rtl;-webkit-tap-highlight-color:transparent;}
+.btn{transition:all 0.18s;cursor:pointer;border:none;font-family:'Tajawal','Arial',sans-serif;}
+.btn:active{transform:scale(0.93);}
+input{font-family:'Tajawal','Arial',sans-serif;}
+@keyframes spin{to{transform:rotate(360deg);}}
+@keyframes up{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
+@keyframes gb{0%,100%{box-shadow:0 0 0 0 rgba(0,230,118,0.3);}50%{box-shadow:0 0 0 14px rgba(0,230,118,0);}}
+@keyframes rs{0%,100%{box-shadow:0 0 0 0 rgba(255,23,68,0.3);}50%{box-shadow:0 0 0 14px rgba(255,23,68,0);}}
+
+/* install banner */
+#installBanner{display:none;background:#1a3a5c;border:1px solid #2979ff;border-radius:14px;padding:14px 16px;margin-bottom:14px;align-items:center;justify-content:space-between;gap:10px;}
+#installBanner p{font-size:0.85rem;color:#7eb8ff;flex:1;}
+#installBtn{background:#2979ff;color:white;border:none;padding:10px 16px;border-radius:10px;font-family:'Tajawal',Arial,sans-serif;font-size:0.85rem;font-weight:700;cursor:pointer;white-space:nowrap;}
+</style>
+</head>
+<body>
+
+<!-- Install Banner -->
+<div id="installBanner">
+  <p>📲 أضف التطبيق لشاشتك الرئيسية!</p>
+  <button id="installBtn" onclick="installApp()">تثبيت</button>
+  <button onclick="document.getElementById('installBanner').style.display='none'" style="background:transparent;border:none;color:#546e7a;font-size:1.2rem;cursor:pointer;padding:0 4px;">✕</button>
+</div>
+
+<!-- Header -->
+<div style="text-align:center;padding:18px 0 14px;">
+  <div style="font-size:1.65rem;font-weight:800;background:linear-gradient(135deg,#2979ff,#00e676);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">
+    📊 محلل Pocket Option
+  </div>
+  <div style="font-size:0.9rem;font-weight:700;color:#7eb8ff;margin-top:5px;">by Ahmad &amp; Hsen</div>
+  <div style="color:#546e7a;font-size:0.8rem;margin-top:4px;">6 مؤشرات تقنية • تحليل فوري بالذكاء الاصطناعي</div>
+</div>
+
+<!-- Pair Selection -->
+<div style="background:#111827;border:1px solid #1e2d45;border-radius:16px;padding:18px;margin-bottom:12px;">
+  <div style="font-size:0.7rem;color:#546e7a;letter-spacing:2px;margin-bottom:12px;font-weight:700;">① اختر الزوج</div>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:12px;" id="pairsGrid"></div>
+  <input id="customPair" placeholder="أو اكتب زوجاً آخر مثل BTCUSD..."
+    style="width:100%;background:#1a2535;border:1px solid #1e2d45;color:#e8eaf6;padding:13px 15px;border-radius:11px;font-size:0.93rem;outline:none;"
+    oninput="onCustomInput(this.value)">
+</div>
+
+<!-- Duration -->
+<div style="background:#111827;border:1px solid #1e2d45;border-radius:16px;padding:18px;margin-bottom:14px;">
+  <div style="font-size:0.7rem;color:#546e7a;letter-spacing:2px;margin-bottom:12px;font-weight:700;">② مدة الصفقة</div>
+  <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;" id="durGrid"></div>
+</div>
+
+<!-- Analyze Button -->
+<button class="btn" id="analyzeBtn" onclick="analyze()"
+  style="width:100%;background:linear-gradient(135deg,#1565c0,#2979ff);color:white;padding:16px;border-radius:14px;font-size:1.05rem;font-weight:800;margin-bottom:16px;">
+  🔍 تحليل الآن
+</button>
+
+<!-- Loading -->
+<div id="loading" style="display:none;text-align:center;padding:16px 0 28px;">
+  <div style="width:40px;height:40px;border:3px solid #1e2d45;border-top-color:#2979ff;border-radius:50%;margin:0 auto 12px;animation:spin 0.7s linear infinite;"></div>
+  <p id="loadingText" style="color:#546e7a;font-size:0.85rem;"></p>
+  <p style="color:#1e2d45;font-size:0.75rem;margin-top:5px;">RSI • MACD • Bollinger • Stochastic • MA • ATR</p>
+</div>
+
+<!-- Error -->
+<div id="errorBox" style="display:none;background:#1a0000;border:1px solid #ff1744;border-radius:12px;padding:16px;color:#ff6b6b;text-align:center;font-size:0.9rem;margin-bottom:12px;"></div>
+
+<!-- Result -->
+<div id="result" style="display:none;animation:up 0.4s ease;"></div>
+
+<script>
+const PAIRS = ["EUR/USD","GBP/USD","USD/JPY","AUD/USD","USD/CHF","EUR/GBP"];
+const DURATIONS = [
+  {label:"دقيقة",value:"1 دقيقة"},
+  {label:"5 دقائق",value:"5 دقائق"},
+  {label:"10 دقائق",value:"10 دقائق"},
+  {label:"30 دقيقة",value:"30 دقيقة"},
+  {label:"ساعة",value:"ساعة"},
+];
+
+let selectedPair = "EUR/USD";
+let selectedDuration = "5 دقائق";
+let customPair = "";
+let deferredPrompt = null;
+
+// PWA install
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('installBanner').style.display = 'flex';
+});
+
+function installApp() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(() => {
+      deferredPrompt = null;
+      document.getElementById('installBanner').style.display = 'none';
+    });
+  }
+}
+
+// Build pair buttons
+function buildPairs() {
+  const grid = document.getElementById('pairsGrid');
+  grid.innerHTML = PAIRS.map(p => `
+    <button class="btn" id="pair_${p.replace('/','')}" onclick="selectPair('${p}')"
+      style="background:${selectedPair===p&&!customPair?'#1a3a5c':'#1a2535'};border:1px solid ${selectedPair===p&&!customPair?'#2979ff':'#1e2d45'};color:${selectedPair===p&&!customPair?'#7eb8ff':'#e8eaf6'};padding:11px 4px;border-radius:11px;font-size:0.78rem;font-weight:700;">
+      ${p}
+    </button>`).join('');
+}
+
+function buildDurations() {
+  const grid = document.getElementById('durGrid');
+  grid.innerHTML = DURATIONS.map(d => `
+    <button class="btn" id="dur_${d.label}" onclick="selectDuration('${d.value}','${d.label}')"
+      style="background:${selectedDuration===d.value?'#0d2b1a':'#1a2535'};border:1px solid ${selectedDuration===d.value?'#00e676':'#1e2d45'};color:${selectedDuration===d.value?'#00e676':'#e8eaf6'};padding:12px 4px;border-radius:11px;font-size:0.75rem;font-weight:700;">
+      ${d.label}
+    </button>`).join('');
+}
+
+function selectPair(p) {
+  selectedPair = p;
+  customPair = "";
+  document.getElementById('customPair').value = "";
+  document.getElementById('result').style.display = 'none';
+  buildPairs();
+}
+
+function onCustomInput(v) {
+  customPair = v;
+  document.getElementById('result').style.display = 'none';
+  buildPairs();
+}
+
+function selectDuration(val, label) {
+  selectedDuration = val;
+  document.getElementById('result').style.display = 'none';
+  buildDurations();
+}
+
+async function analyze() {
+  const pair = customPair.trim().toUpperCase() || selectedPair;
+  const btn = document.getElementById('analyzeBtn');
+  btn.disabled = true;
+  btn.style.background = '#1e2d45';
+  btn.textContent = '⏳ جاري التحليل...';
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('loadingText').textContent = `يتم تحليل ${pair} — ${selectedDuration}`;
+  document.getElementById('result').style.display = 'none';
+  document.getElementById('errorBox').style.display = 'none';
+
+  try {
+    const prompt = `You are a professional forex analyst for Pocket Option binary trading platform.
+Search for the current price and technical data for ${pair} right now.
+Trade duration: ${selectedDuration}.
+Analyze these 6 indicators: RSI, MACD, Bollinger Bands, Stochastic, Moving Average (MA20/MA50), ATR.
+Give a clear BUY or SELL recommendation only - never neutral or wait.
+Respond ONLY with valid JSON, no extra text, no markdown, no backticks.
+All values must be strings. Use Arabic: "شراء" for BUY, "بيع" for SELL.
+Format: {"pair":"${pair}","duration":"${selectedDuration}","price":"1.0823","change":"+0.05%","signal":"شراء","signal_strength":"قوي","confidence":"72","trend":"صاعد","support":"1.0800","resistance":"1.0850","indicators":{"rsi":{"value":"42","signal":"شراء","note":"تشبع بيعي"},"macd":{"value":"0.0003","signal":"شراء","note":"تقاطع إيجابي"},"bollinger":{"position":"قرب الحد السفلي","signal":"شراء","note":"ارتداد محتمل"},"stochastic":{"k":"25","d":"28","signal":"شراء","note":"تشبع بيعي"},"ma":{"ma20":"1.0815","ma50":"1.0790","signal":"شراء","note":"السعر فوق المتوسطين"},"atr":{"value":"0.0012","note":"متوسط"}},"reason":"سبب التوصية في جملتين."}`;
+
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({
+        model:"claude-sonnet-4-20250514",
+        max_tokens:2000,
+        tools:[{type:"web_search_20250305",name:"web_search"}],
+        messages:[{role:"user",content:prompt}]
+      })
+    });
+
+    const data = await res.json();
+    const text = data.content.filter(b=>b.type==="text").map(b=>b.text).join("");
+    const match = text.match(/\{[\s\S]*\}/);
+    if (!match) throw new Error("no json");
+    const r = JSON.parse(match[0]);
+    showResult(r);
+  } catch(e) {
+    document.getElementById('errorBox').textContent = "❌ تعذر التحليل، تحقق من الاتصال وحاول مجدداً";
+    document.getElementById('errorBox').style.display = 'block';
+  }
+
+  document.getElementById('loading').style.display = 'none';
+  btn.disabled = false;
+  btn.style.background = 'linear-gradient(135deg,#1565c0,#2979ff)';
+  btn.textContent = '🔍 تحليل الآن';
+}
+
+function indRow(name, icon, d) {
+  if (!d) return '';
+  const buy = d.signal === "شراء";
+  const c = buy ? "#00e676" : "#ff1744";
+  const bg = buy ? "#0a2a0a" : "#2a0a0a";
+  return `<div style="background:${bg};border:1px solid ${c}44;border-radius:12px;padding:13px 15px;display:flex;justify-content:space-between;align-items:center;">
+    <div style="flex:1;">
+      <div style="font-size:0.73rem;color:#546e7a;margin-bottom:3px;">${icon} ${name}</div>
+      <div style="font-size:0.82rem;color:#b0bec5;">${d.note||''}</div>
+    </div>
+    <div style="background:${c}22;color:${c};font-size:0.72rem;font-weight:700;padding:4px 12px;border-radius:20px;margin-right:10px;white-space:nowrap;">${d.signal}</div>
+  </div>`;
+}
+
+function showResult(r) {
+  const buy = r.signal === "شراء";
+  const sc = buy ? "#00e676" : "#ff1744";
+  const sb = buy ? "linear-gradient(135deg,#001a00,#003300)" : "linear-gradient(135deg,#1a0000,#330000)";
+  const anim = buy ? "gb" : "rs";
+  const conf = parseInt(r.confidence)||70;
+  const confColor = conf>=70?"#00e676":conf>=50?"#ffd600":"#ff1744";
+
+  const changeColor = (r.change||"").startsWith("+") ? "#00e676" : "#ff1744";
+  const trendColor = r.trend==="صاعد" ? "#00e676" : "#ff1744";
+
+  const html = `
+    <div style="background:${sb};border:2px solid ${sc};border-radius:20px;padding:26px 20px;text-align:center;margin-bottom:14px;animation:${anim} 2.5s infinite;">
+      <div style="font-size:0.75rem;opacity:0.6;letter-spacing:2px;margin-bottom:6px;">التوصية • ${r.duration} • ${r.pair}</div>
+      <div style="font-size:3rem;font-weight:800;color:${sc};line-height:1.1;">${buy?"🟢":"🔴"} ${r.signal}</div>
+      <div style="font-size:0.85rem;opacity:0.75;margin-top:8px;">${r.signal_strength} الإشارة</div>
+      <div style="margin-top:14px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+          <span style="font-size:0.78rem;color:#546e7a;">نسبة الثقة</span>
+          <span style="font-size:0.88rem;font-weight:700;color:${confColor};">${conf}%</span>
+        </div>
+        <div style="height:7px;background:#1a2535;border-radius:4px;overflow:hidden;">
+          <div style="height:100%;width:${conf}%;background:${confColor};border-radius:4px;transition:width 1s ease;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="background:#111827;border:1px solid #1e2d45;border-radius:16px;padding:18px;margin-bottom:14px;">
+      <div style="font-size:0.7rem;color:#546e7a;letter-spacing:2px;margin-bottom:12px;font-weight:700;">بيانات السعر</div>
+      ${[["السعر الحالي",r.price,"#e8eaf6"],["التغيير اليومي",r.change,changeColor],["الاتجاه",r.trend,trendColor],["الدعم",r.support,"#00e676"],["المقاومة",r.resistance,"#ff1744"]]
+        .map(([l,v,c])=>`<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #1a2535;"><span style="color:#546e7a;font-size:0.83rem;">${l}</span><span style="font-weight:700;color:${c};font-size:0.9rem;">${v}</span></div>`).join('')}
+    </div>
+
+    <div style="background:#111827;border:1px solid #1e2d45;border-radius:16px;padding:18px;margin-bottom:14px;">
+      <div style="font-size:0.7rem;color:#546e7a;letter-spacing:2px;margin-bottom:14px;font-weight:700;">المؤشرات التقنية الستة</div>
+      <div style="display:flex;flex-direction:column;gap:9px;">
+        ${indRow("RSI","📈",r.indicators?.rsi)}
+        ${indRow("MACD","📉",r.indicators?.macd)}
+        ${indRow("Bollinger Bands","🎯",r.indicators?.bollinger)}
+        ${indRow("Stochastic","🔄",r.indicators?.stochastic)}
+        ${indRow("Moving Average","📊",r.indicators?.ma)}
+        ${r.indicators?.atr?`<div style="background:#111a2a;border:1px solid #1e2d45;border-radius:12px;padding:13px 15px;display:flex;justify-content:space-between;align-items:center;"><div><div style="font-size:0.73rem;color:#546e7a;margin-bottom:3px;">⚡ ATR — قوة التقلب</div><div style="font-size:0.82rem;color:#b0bec5;">${r.indicators.atr.note}</div></div><div style="color:#ffd600;font-weight:700;font-size:0.88rem;">${r.indicators.atr.value}</div></div>`:''}
+      </div>
+    </div>
+
+    <div style="background:#111827;border:1px solid #1e2d45;border-radius:16px;padding:18px;margin-bottom:14px;">
+      <div style="font-size:0.7rem;color:#546e7a;letter-spacing:2px;margin-bottom:10px;font-weight:700;">ملخص التحليل</div>
+      <p style="color:#b0bec5;font-size:0.88rem;line-height:1.8;">${r.reason}</p>
+    </div>
+
+    <div style="background:#0f1420;border:1px solid #1a2030;border-radius:12px;padding:14px;font-size:0.76rem;color:#3a4f63;text-align:center;line-height:1.7;margin-bottom:32px;">
+      ⚠️ هذا التحليل للمعلومات فقط وليس نصيحة مالية. القرار النهائي يعود لك دائماً.
+    </div>`;
+
+  const el = document.getElementById('result');
+  el.innerHTML = html;
+  el.style.display = 'block';
+  el.style.animation = 'none';
+  el.offsetHeight;
+  el.style.animation = 'up 0.4s ease';
+}
+
+// Init
+buildPairs();
+buildDurations();
+
+// Service Worker للعمل بدون إنترنت
+if ('serviceWorker' in navigator) {
+  const swCode = `
+    const CACHE='trading-v1';
+    const ASSETS=['/'];
+    self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS))));
+    self.addEventListener('fetch',e=>e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request))));
+  `;
+  const blob = new Blob([swCode], {type:'application/javascript'});
+  const swUrl = URL.createObjectURL(blob);
+  navigator.serviceWorker.register(swUrl).catch(()=>{});
+}
+</script>
+</body>
+</html>
