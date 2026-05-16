@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#0a0e1a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>تحليل Forex</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Tajawal','Arial',sans-serif;background:#0a0e1a;color:#e8eaf6;min-height:100vh;padding:16px;direction:rtl;}
+.btn{transition:all 0.18s;cursor:pointer;border:none;font-family:'Tajawal','Arial',sans-serif;}
+.btn:active{transform:scale(0.93);}
+@keyframes spin{to{transform:rotate(360deg);}}
+@keyframes up{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
+@keyframes gb{0%,100%{box-shadow:0 0 0 0 rgba(0,230,118,0.3);}50%{box-shadow:0 0 0 14px rgba(0,230,118,0);}}
+@keyframes rs{0%,100%{box-shadow:0 0 0 0 rgba(255,23,68,0.3);}50%{box-shadow:0 0 0 14px rgba(255,23,68,0);}}
+@keyframes pulse_bar{0%,100%{opacity:1;}50%{opacity:0.4;}}
+</style>
+</head>
+<body>
+
+<div id="apiKeySection" style="display:none;background:#111827;border:1px solid #ff1744;border-radius:16px;padding:18px;margin-bottom:12px;">
+  <div style="font-size:0.7rem;color:#ff6b6b;letter-spacing:2px;margin-bottom:12px;font-weight:700;">🔑 أدخل Claude API Key</div>
+  <input id="apiKeyInput" type="password" placeholder="sk-ant-api03-..."
+    style="width:100%;background:#1a2535;border:1px solid #1e2d45;color:#e8eaf6;padding:13px 15px;border-radius:11px;font-size:0.85rem;outline:none;margin-bottom:10px;direction:ltr;">
+  <button class="btn" onclick="saveApiKey()"
+    style="width:100%;background:linear-gradient(135deg,#1565c0,#2979ff);color:white;padding:12px;border-radius:11px;font-size:0.95rem;font-weight:700;">
+    حفظ الـ Key
+  </button>
+</div>
+
+<div style="text-align:center;padding:18px 0 10px;">
+  <div style="font-size:1.65rem;font-weight:800;background:linear-gradient(135deg,#2979ff,#00e676);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">
+    📊 تحليل Forex
+  </div>
+  <div style="font-size:0.95rem;font-weight:700;color:#7eb8ff;margin-top:5px;">by Ahmad & Hsen</div>
+  <div style="color:#546e7a;font-size:0.8rem;margin-top:4px;">فوركس حقيقي • بيانات لحظية • ٥ مؤشرات</div>
+</div>
+
+<div id="bestTimeNotif" style="border-radius:14px;padding:14px 16px;margin:10px 0 12px;text-align:center;font-size:0.82rem;font-weight:600;line-height:1.5;"></div>
+
+<div style="background:#111827;border:1px solid #1e2d45;border-radius:16px;padding:18px;margin-bottom:12px;">
+  <div style="font-size:0.7rem;color:#546e7a;letter-spacing:2px;margin-bottom:14px;font-weight:700;">جلسات السوق — توقيت لبنان</div>
+  <div id="sessionsContent"></div>
+  <div style="background:#1a1a2e;border:1px solid #2d2d4e;border-radius:12px;padding:12px;margin-top:10px;">
+    <div style="font-size:0.72rem;color:#546e7a;margin-bottom:8px;font-weight:700;">أفضل أوقات التداول يومياً</div>
+    <div style="font-size:0.78rem;color:#b0bec5;line-height:2.2;">
+      ⭐ 04:00 PM - 08:00 PM — تداخل لندن/نيويورك (الأفضل)<br>
+      ✅ 11:00 AM - 04:00 PM — جلسة لندن (ممتاز)<br>
+      ✅ 04:00 PM - 01:00 AM — جلسة نيويورك (ممتاز)<br>
+      ⚠️ 01:00 AM - 11:00 AM — جلسة آسيا (تجنب)
+    </div>
+  </div>
+</div>
+
+<div style="background:#111827;border:1px solid #1e2d45;border-radius:16px;padding:18px;margin-bottom:12px;">
+  <div style="font-size:0.7rem;color:#546e7a;letter-spacing:2px;margin-bottom:12px;font-weight:700;">① اختر الزوج</div>
+  <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:9px;" id="pairsGrid"></div>
+</div>
+
+<div style="background:#111827;border:1px solid #1e2d45;border-radius:16px;padding:18px;margin-bottom:14px;">
+  <div style="font-size:0.7rem;color:#546e7a;letter-spacing:2px;margin-bottom:12px;font-weight:700;">② الإطار الزمني</div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;" id="tfGrid"></div>
+</div>
+
+<button class="btn" id="analyzeBtn" onclick="analyze()"
+  style="width:100%;background:linear-gradient(135deg,#1565c0,#2979ff);color:white;padding:16px;border-radius:14px;font-size:1.05rem;font-weight:800;margin-bottom:16px;">
+  🔍 تحليل الآن
+</button>
+
+<div id="loading" style="display:none;text-align:center;padding:20px 0 28px;">
+  <div style="width:40px;height:40px;border:3px solid #1e2d45;border-top-color:#2979ff;border-radius:50%;margin:0 auto 12px;animation:spin 0.7s linear infinite;"></div>
+  <p style="color:#546e7a;font-size:0.85rem;">جاري جلب البيانات وتحليل السوق...</p>
+</div>
+
+<div id="errorBox" style="display:none;background:#1a0000;border:1px solid #ff1744;border-radius:12px;padding:16px;color:#ff6b6b;text-align:center;font-size:0.9rem;margin-bottom:12px;"></div>
+<div id="result" style="display:none;"></div>
+
+<script>
+const PAIRS = ["EUR/USD","GBP/USD","USD/JPY","AUD/USD","USD/CHF","EUR/GBP","USD/CAD","NZD/USD","EUR/JPY","GBP/JPY","AUD/JPY","EUR/AUD","GBP/CHF","EUR/CHF","AUD/CAD","CAD/JPY"];
+const TFS = [{l:"M1",v:"دقيقة"},{l:"M5",v:"٥ دقائق"},{l:"M15",v:"١٥ دقيقة"},{l:"H1",v:"ساعة"}];
+const SESSIONS = [
+  {name:'سيدني 🌏', start:1, end:10, color:'#7eb8ff', activeColor:'#7eb8ff', quality:'ضعيف', emoji:'🔵', pairs:'AUD/USD • NZD/USD'},
+  {name:'طوكيو (آسيا) 🌸', start:3, end:12, color:'#ffd600', activeColor:'#ffd600', quality:'متوسط', emoji:'🟡', pairs:'USD/JPY • EUR/JPY • AUD/JPY'},
+  {name:'لندن 🇬🇧', start:11, end:20, color:'#00e676', activeColor:'#00e676', quality:'ممتاز', emoji:'🟢', pairs:'EUR/USD • GBP/USD • EUR/GBP'},
+  {name:'نيويورك 🇺🇸', start:16, end:25, color:'#00b4d8', activeColor:'#00b4d8', quality:'ممتاز', emoji:'🔵', pairs:'EUR/USD • GBP/USD • USD/CAD'},
+];
+
+let SP="EUR/USD", STF="٥ دقائق", TI=null;
+let API_KEY = localStorage.getItem('claude_api_key')||'';
+
+window.onload = () => {
+  if(!API_KEY) document.getElementById('apiKeySection').style.display='block';
+  buildPairs(); buildTF(); buildSessions(); updateNotif();
+  setInterval(()=>{buildSessions();updateNotif();}, 60000);
+};
+
+function saveApiKey() {
+  const k = document.getElementById('apiKeyInput').value.trim();
+  if(!k.startsWith('sk-ant-')){alert('الـ Key غير صحيح!');return;}
+  localStorage.setItem('claude_api_key',k); API_KEY=k;
+  document.getElementById('apiKeySection').style.display='none';
+}
+
+function ar(n){ return String(n).replace(/[0-9]/g,d=>'٠١٢٣٤٥٦٧٨٩'[d]); }
+
+function getLBH(){ return (new Date().getUTCHours()+3)%24; }
+function getLBM(){ return new Date().getUTCMinutes(); }
+
+function isMarketOpen(){
+  const d=new Date().getUTCDay(), h=new Date().getUTCHours();
+  if(d===6) return false;
+  if(d===0&&h<22) return false;
+  if(d===5&&h>=22) return false;
+  return true;
+}
+
+function fmt(h24){
+  const h=h24>=24?h24-24:h24;
+  const p=h<12?'AM':'PM';
+  const h12=h===0?12:h>12?h-12:h;
+  return `${String(h12).padStart(2,'0')}:00 ${p}`;
+}
+
+function isActive(s){
+  if(!isMarketOpen()) return false;
+  const h=getLBH();
+  if(s.end>24) return h>=s.start||h<(s.end-24);
+  return h>=s.start&&h<s.end;
+}
+
+function buildSessions(){
+  const h=getLBH(), m=getLBM();
+  const h12=h===0?12:h>12?h-12:h;
+  const p=h<12?'صباحاً':'مساءً';
+  const isOv=isMarketOpen()&&h>=16&&h<20;
+
+  const p2 = h<12?'AM':'PM';
+  let html=`<div style="text-align:center;margin-bottom:16px;">
+    <div style="font-size:0.72rem;color:#546e7a;margin-bottom:4px;">الوقت الحالي</div>
+    <div style="font-size:1.6rem;font-weight:800;color:#e8eaf6;direction:ltr;text-align:center;"><span style="font-size:1rem;color:#7eb8ff;">${p2}</span> ${String(h12).padStart(2,'0')}:${String(m).padStart(2,'0')}</div>
+  </div>`;
+
+  if(!isMarketOpen()){
+    html+=`<div style="background:#1a0000;border:2px solid #ff174466;border-radius:16px;padding:18px;text-align:center;">
+      <div style="font-size:1.5rem;margin-bottom:6px;">🔴</div>
+      <div style="color:#ff6b6b;font-weight:800;font-size:1rem;">السوق مغلق الآن</div>
+      <div style="color:#ff6b6b99;font-size:0.78rem;margin-top:4px;">يفتح الاثنين الساعة 01:00 AM</div>
+    </div>`;
+  } else {
+    // Overlap banner
+    if(isOv){
+      html+=`<div style="background:linear-gradient(135deg,#003d00,#005500);border:2px solid #00e676;border-radius:16px;padding:14px;text-align:center;margin-bottom:12px;box-shadow:0 0 24px #00e67644;animation:pulse_bar 2s infinite;">
+        <div style="color:#00e676;font-weight:800;font-size:1rem;">⭐ تداخل لندن + نيويورك</div>
+        <div style="color:#00e67699;font-size:0.78rem;margin-top:4px;">الأفضل على الإطلاق • أعلى سيولة وأوضح إشارات</div>
+      </div>`;
+    }
+
+    // Sessions grid - 2x2
+    html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">`;
+    SESSIONS.forEach(s=>{
+      const a=isActive(s);
+      const c=a?s.activeColor:'#3d4f63';
+      const qualityColor=s.quality==='ممتاز'?'#00e676':s.quality==='متوسط'?'#ffd600':'#7eb8ff';
+
+      let bg, borderStyle, shadow='';
+      if(a){
+        if(s.color==='#00e676'){
+          bg='linear-gradient(160deg,#062a06,#0a3a0a)';
+        } else if(s.color==='#ffd600'){
+          bg='linear-gradient(160deg,#2a2400,#3a3200)';
+        } else if(s.color==='#00b4d8'){
+          bg='linear-gradient(160deg,#001a2a,#002535)';
+        } else {
+          bg='linear-gradient(160deg,#0a1520,#0d1e2c)';
+        }
+        borderStyle=`2px solid ${s.activeColor}`;
+        shadow=`box-shadow:0 0 18px ${s.activeColor}44;`;
+      } else {
+        bg='#111827';
+        borderStyle='1px solid #1e2d45';
+      }
+
+      html+=`<div style="background:${bg};border:${borderStyle};border-radius:16px;padding:14px;${shadow}transition:all 0.3s;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+          <div style="font-weight:800;color:${c};font-size:0.95rem;">${s.name}</div>
+          <div style="width:10px;height:10px;border-radius:50%;background:${a?s.activeColor:'#2d3f55'};${a?`box-shadow:0 0 8px ${s.activeColor};`:''};margin-top:3px;"></div>
+        </div>
+        <div style="font-size:0.72rem;color:${a?c+'aa':'#546e7a'};margin-bottom:6px;">${fmt(s.start)} — ${fmt(s.end)}</div>
+        <div style="font-size:0.7rem;color:${a?c+'88':'#2d3f55'};margin-bottom:8px;line-height:1.4;">${s.pairs}</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div style="background:${a?qualityColor+'22':'#1a2535'};color:${a?qualityColor:'#3d4f63'};font-size:0.65rem;font-weight:700;padding:3px 8px;border-radius:20px;">${a?s.quality:'مغلقة'}</div>
+          ${a?`<div style="font-size:0.65rem;color:${s.activeColor};">● نشطة</div>`:`<div style="font-size:0.65rem;color:#2d3f55;">○ مغلقة</div>`}
+        </div>
+        ${a?`<div style="margin-top:8px;height:2px;background:linear-gradient(90deg,${s.activeColor},${s.activeColor}22);border-radius:2px;animation:pulse_bar 2s infinite;"></div>`:''}
+      </div>`;
+    });
+    html+=`</div>`;
+  }
+
+  document.getElementById('sessionsContent').innerHTML=html;
+}
+
+function updateNotif(){
+  const h=getLBH(), m=getLBM();
+  const el=document.getElementById('bestTimeNotif');
+  let msg,bg,border;
+  if(!isMarketOpen()){
+    msg='🔴 السوق مغلق — يفتح الاثنين الساعة 01:00 AM';
+    bg='linear-gradient(135deg,#1a0000,#2a0000)'; border='#ff1744';
+  } else if(h>=16&&h<20){
+    msg='⭐ أنت الآن في أفضل وقت للتداول! تداخل لندن/نيويورك — ينتهي 08:00 PM';
+    bg='linear-gradient(135deg,#003300,#004400)'; border='#00e676';
+  } else if(h>=11&&h<16){
+    const mins=(16-h)*60-m, hh=ar(Math.floor(mins/60)), mm=ar(mins%60);
+    msg=`✅ جلسة لندن مفتوحة — أفضل وقت بعد ${hh} ساعة و${mm} دقيقة (04:00 PM)`;
+    bg='linear-gradient(135deg,#0a2a0a,#0d3a0d)'; border='#00e676';
+  } else if(h>=20||(h>=0&&h<1)){
+    msg='✅ جلسة نيويورك مفتوحة — تنتهي 01:00 AM';
+    bg='linear-gradient(135deg,#0a2a0a,#0d3a0d)'; border='#7eb8ff';
+  } else {
+    const mins=h<11?(11-h)*60-m:(35-h)*60-m;
+    const hh=ar(Math.floor(Math.abs(mins)/60));
+    msg=`⚠️ إشارات ضعيفة — جلسة لندن تبدأ بعد ${hh} ساعة (11:00 AM)`;
+    bg='linear-gradient(135deg,#1a1a00,#2a2a00)'; border='#ffd600';
+  }
+  el.style.cssText=`border-radius:14px;padding:14px 16px;margin:10px 0 12px;text-align:center;font-size:0.82rem;font-weight:600;line-height:1.5;background:${bg};border:1px solid ${border};color:${border};`;
+  el.textContent=msg;
+}
+
+function buildPairs(){
+  document.getElementById('pairsGrid').innerHTML=PAIRS.map(p=>
+    `<button class="btn" onclick="selPair('${p}')"
+      style="background:${SP===p?'#1a3a5c':'#1a2535'};border:1px solid ${SP===p?'#2979ff':'#1e2d45'};color:${SP===p?'#7eb8ff':'#e8eaf6'};padding:11px 8px;border-radius:11px;font-size:0.78rem;font-weight:700;">${p}</button>`
+  ).join('');
+}
+
+function buildTF(){
+  document.getElementById('tfGrid').innerHTML=TFS.map(t=>
+    `<button class="btn" onclick="selTF('${t.v}')"
+      style="background:${STF===t.v?'#0d2b1a':'#1a2535'};border:1px solid ${STF===t.v?'#00e676':'#1e2d45'};color:${STF===t.v?'#00e676':'#e8eaf6'};padding:12px 4px;border-radius:11px;font-size:0.85rem;font-weight:700;">${t.l}</button>`
+  ).join('');
+}
+
+function selPair(p){SP=p;buildPairs();document.getElementById('result').style.display='none';}
+function selTF(v){STF=v;buildTF();document.getElementById('result').style.display='none';}
+
+function startCD(){
+  if(TI) clearInterval(TI);
+  const total=STF==='دقيقة'?60:STF==='٥ دقائق'?300:STF==='١٥ دقيقة'?900:3600;
+  let secs=total;
+  const btn=document.getElementById('cdBtn');
+  btn.disabled=true;
+  TI=setInterval(()=>{
+    secs--;
+    const c=secs>total*.5?'#00e676':secs>total*.2?'#ffd600':'#ff1744';
+    const mm=Math.floor(secs/60), ss=secs%60;
+    btn.style.color=c; btn.style.borderColor=c;
+    btn.textContent=`⏱ ${ar(mm)}:${ar(String(ss).padStart(2,'0'))}`;
+    btn.style.fontSize='1.5rem';
+    if(secs<=0){
+      clearInterval(TI); btn.disabled=false;
+      btn.textContent=`▶️ ابدأ الصفقة — عداد ${STF}`;
+      btn.style.fontSize='1rem'; btn.style.color='white';
+    }
+  },1000);
+}
+
+async function analyze(){
+  API_KEY=localStorage.getItem('claude_api_key')||'';
+  if(!API_KEY){document.getElementById('apiKeySection').style.display='block';return;}
+  if(!isMarketOpen()){
+    const eb=document.getElementById('errorBox');
+    eb.innerHTML='🔴 السوق مغلق حالياً<br>يفتح الاثنين الساعة 01:00 AM';
+    eb.style.cssText='display:block;background:#1a0a00;border:1px solid #ff6b00;border-radius:12px;padding:16px;color:#ff9944;text-align:center;font-size:0.9rem;margin-bottom:12px;';
+    document.getElementById('result').style.display='none'; return;
+  }
+  const btn=document.getElementById('analyzeBtn');
+  btn.disabled=true; btn.textContent='⏳ جاري التحليل...';
+  document.getElementById('loading').style.display='block';
+  document.getElementById('result').style.display='none';
+  document.getElementById('errorBox').style.display='none';
+
+  const h=getLBH(), m=getLBM();
+  const h12=h===0?12:h>12?h-12:h;
+  const p=h<12?'AM':'PM';
+  const tStr=`${String(h12).padStart(2,'0')}:${String(m).padStart(2,'0')} ${p} (Lebanon)`;
+  const day=new Date().toLocaleDateString('ar',{weekday:'long'});
+  const sess=h>=16&&h<20?'تداخل لندن/نيويورك':h>=11&&h<16?'لندن':h>=20||h<1?'نيويورك':'آسيا';
+
+  try{
+    const prompt=`You are a professional Forex analyst. Analyze ${SP} for a ${STF} binary options trade.
+Time: ${tStr} | Day: ${day} | Session: ${sess}
+
+Search for current ${SP} price and recent data, then analyze:
+1. MOVING AVERAGES: Price vs MA20/MA50/MA200, direction?
+2. MACD: Momentum positive or negative? Lines crossing?
+3. RSI: Value? Below 30=شراء, Above 70=بيع
+4. BOLLINGER BANDS: Price near upper=بيع, lower=شراء?
+5. PRICE ACTION: Last 5 candles pattern?
+
+Session ${sess}: ${sess.includes('تداخل')?'HIGHEST confidence possible':'Consider confidence level for this session'}
+
+Count votes. 4-5 agree=high, 3=medium, less=انتظر
+
+Respond ONLY with JSON:
+{"signal":"شراء or بيع or انتظر","confidence":"55-92","signal_strength":"قوي or معتدل or ضعيف","trend":"صاعد or هابط or محايد","current_price":"price","change_24h":"+/-X%","session":"${sess}","session_quality":"ممتاز or جيد or ضعيف","support":"level","resistance":"level","agreement":"X من ٥","indicators":{"rsi":{"value":"num","signal":"شراء or بيع or محايد","note":"Arabic"},"macd":{"value":"pos/neg","signal":"شراء or بيع or محايد","note":"Arabic"},"bollinger":{"position":"قرب الحد العلوي or قرب الحد السفلي or في المنتصف","signal":"شراء or بيع or محايد","note":"Arabic"},"ma":{"trend":"صاعد or هابط","signal":"شراء or بيع or محايد","note":"Arabic"},"price_action":{"pattern":"Arabic","signal":"شراء or بيع or محايد","note":"Arabic"}},"reason":"2 Arabic sentences"}`;
+
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':API_KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1500,tools:[{type:'web_search_20250305',name:'web_search'}],messages:[{role:'user',content:prompt}]})
+    });
+    const data=await res.json();
+    const text=data.content.filter(b=>b.type==='text').map(b=>b.text).join('');
+    const match=text.match(/\{[\s\S]*\}/);
+    if(!match) throw new Error(data.error?.message||'تعذر قراءة الرد');
+    showResult(JSON.parse(match[0]));
+  }catch(e){
+    const eb=document.getElementById('errorBox');
+    eb.textContent='❌ '+e.message;
+    eb.style.cssText='display:block;background:#1a0000;border:1px solid #ff1744;border-radius:12px;padding:16px;color:#ff6b6b;text-align:center;font-size:0.9rem;margin-bottom:12px;';
+  }
+  document.getElementById('loading').style.display='none';
+  btn.disabled=false; btn.textContent='🔍 تحليل الآن';
+}
+
+function irow(name,icon,d){
+  if(!d) return '';
+  const buy=d.signal==='شراء',neu=d.signal==='محايد';
+  const c=neu?'#ffd600':buy?'#00e676':'#ff1744';
+  const bg=neu?'#1a1a00':buy?'#0a2a0a':'#2a0a0a';
+  return `<div style="background:${bg};border:1px solid ${c}44;border-radius:12px;padding:13px 15px;display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;">
+    <div style="flex:1;"><div style="font-size:0.73rem;color:#546e7a;margin-bottom:3px;">${icon} ${name}</div>
+    <div style="font-size:0.82rem;color:#b0bec5;">${d.note||d.pattern||''}</div></div>
+    <div style="background:${c}22;color:${c};font-size:0.72rem;font-weight:700;padding:4px 12px;border-radius:20px;margin-right:10px;white-space:nowrap;">${d.signal}</div>
+  </div>`;
+}
+
+function showResult(r){
+  const wait=r.signal==='انتظر',buy=r.signal==='شراء';
+  const sc=wait?'#ffd600':buy?'#00e676':'#ff1744';
+  const sb=wait?'linear-gradient(135deg,#1a1a00,#2d2d00)':buy?'linear-gradient(135deg,#001a00,#003300)':'linear-gradient(135deg,#1a0000,#330000)';
+  const conf=parseInt(r.confidence)||65;
+  const cc=conf>=70?'#00e676':conf>=55?'#ffd600':'#ff1744';
+  const sqC=r.session_quality==='ممتاز'?'#00e676':r.session_quality==='جيد'?'#ffd600':'#ff6b6b';
+  const emoji=wait?'⚪':buy?'🟢':'🔴';
+
+  document.getElementById('result').innerHTML=`
+    <div style="background:${sb};border:2px solid ${sc};border-radius:20px;padding:26px 20px;text-align:center;margin-bottom:14px;animation:${wait?'up':buy?'gb':'rs'} ${wait?'0.4s ease':'2.5s infinite'};">
+      <div style="font-size:0.75rem;opacity:0.6;letter-spacing:2px;margin-bottom:6px;">التوصية • ${STF} • ${SP}</div>
+      <div style="font-size:3rem;font-weight:800;color:${sc};line-height:1.1;">${emoji} ${r.signal}</div>
+      <div style="font-size:0.85rem;opacity:0.75;margin-top:8px;">${r.signal_strength||''} • جلسة ${r.session||''}</div>
+      <div style="margin-top:14px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+          <span style="font-size:0.78rem;color:#546e7a;">نسبة الثقة</span>
+          <span style="font-size:0.88rem;font-weight:700;color:${cc};">${ar(conf)}%</span>
+        </div>
+        <div style="height:7px;background:#1a2535;border-radius:4px;overflow:hidden;">
+          <div style="height:100%;width:${conf}%;background:${cc};border-radius:4px;"></div>
+        </div>
+      </div>
+    </div>
+
+    ${!wait?`<button class="btn" id="cdBtn" onclick="startCD()"
+      style="width:100%;background:linear-gradient(135deg,${buy?'#003300,#005500':'#330000,#550000'});color:white;padding:16px;border-radius:14px;font-family:'Tajawal',Arial,sans-serif;font-size:1rem;font-weight:800;margin-bottom:14px;border:2px solid transparent;">
+      ▶️ ابدأ الصفقة — عداد ${STF}</button>`:''}
+
+    <div style="background:#111827;border:1px solid #1e2d45;border-radius:16px;padding:18px;margin-bottom:14px;">
+      <div style="font-size:0.7rem;color:#546e7a;letter-spacing:2px;margin-bottom:12px;font-weight:700;">بيانات السوق</div>
+      ${[['السعر الحالي',r.current_price,'#e8eaf6'],['التغيير ٢٤ ساعة',r.change_24h,(r.change_24h||'').startsWith('+')?'#00e676':'#ff1744'],['الاتجاه',r.trend,r.trend==='صاعد'?'#00e676':r.trend==='هابط'?'#ff1744':'#ffd600'],['جودة الجلسة',r.session_quality,sqC],['التوافق',r.agreement,'#7eb8ff'],['الدعم',r.support,'#00e676'],['المقاومة',r.resistance,'#ff1744']].filter(([,v])=>v).map(([l,v,c])=>`<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #1a2535;"><span style="color:#546e7a;font-size:0.83rem;">${l}</span><span style="font-weight:700;color:${c};font-size:0.88rem;">${v}</span></div>`).join('')}
+    </div>
+
+    <div style="background:#111827;border:1px solid #1e2d45;border-radius:16px;padding:18px;margin-bottom:14px;">
+      <div style="font-size:0.7rem;color:#546e7a;letter-spacing:2px;margin-bottom:14px;font-weight:700;">المؤشرات التقنية</div>
+      ${irow('RSI','📈',r.indicators?.rsi)}
+      ${irow('MACD','📉',r.indicators?.macd)}
+      ${irow('Bollinger Bands','🎯',r.indicators?.bollinger)}
+      ${irow('Moving Average','📊',r.indicators?.ma)}
+      ${irow('Price Action','🕯️',r.indicators?.price_action)}
+    </div>
+
+    <div style="background:#111827;border:1px solid #1e2d45;border-radius:16px;padding:18px;margin-bottom:14px;">
+      <div style="font-size:0.7rem;color:#546e7a;letter-spacing:2px;margin-bottom:10px;font-weight:700;">ملخص التحليل</div>
+      <p style="color:#b0bec5;font-size:0.88rem;line-height:1.8;">${r.reason}</p>
+    </div>
+
+    <div style="background:#0f1420;border:1px solid #1a2030;border-radius:12px;padding:14px;font-size:0.76rem;color:#3a4f63;text-align:center;line-height:1.7;margin-bottom:32px;">
+      ⚠️ هذا التحليل للمعلومات فقط. القرار النهائي يعود لك دائماً.
+    </div>`;
+
+  document.getElementById('result').style.display='block';
+}
+</script>
+</body>
+</html>
